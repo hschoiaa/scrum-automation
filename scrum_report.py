@@ -43,7 +43,21 @@ def get_jira_tickets():
     """JIRA 티켓 조회"""
     print("🔍 JIRA 티켓 조회 중...")
 
-    jql = "assignee=currentUser() AND updated>=-7d ORDER BY updated DESC"
+    # 요일별 수집 기간 결정
+    weekday = datetime.now().weekday()  # 0=월, 1=화, 2=수, 3=목
+    if weekday == 0:  # 월요일
+        days = 7
+        print("  → 월요일: 1주일치 데이터 수집")
+    elif weekday == 1:  # 화요일
+        days = 2
+        print("  → 화요일: 월+화 데이터 수집")
+    elif weekday == 3:  # 목요일
+        days = 3
+        print("  → 목요일: 화+수+목 데이터 수집")
+    else:
+        days = 7  # 기본값
+
+    jql = f"assignee=currentUser() AND updated>=-{days}d ORDER BY updated DESC"
     url = f"{JIRA_BASE_URL}/rest/api/3/search/jql"
     params = f"?jql={requests.utils.quote(jql)}&maxResults=50&fields=summary,status,description,updated,created,comment"
 
@@ -56,8 +70,18 @@ def get_confluence_pages():
     """Confluence 페이지 조회"""
     print("📄 Confluence 페이지 조회 중...")
 
-    # 최근 7일간 생성/수정한 페이지 조회
-    cql = "contributor=currentUser() AND lastModified >= now('-7d') ORDER BY lastModified DESC"
+    # 요일별 수집 기간 결정 (JIRA와 동일)
+    weekday = datetime.now().weekday()  # 0=월, 1=화, 2=수, 3=목
+    if weekday == 0:  # 월요일
+        days = 7
+    elif weekday == 1:  # 화요일
+        days = 2
+    elif weekday == 3:  # 목요일
+        days = 3
+    else:
+        days = 7  # 기본값
+
+    cql = f"contributor=currentUser() AND lastModified >= now('-{days}d') ORDER BY lastModified DESC"
     url = f"{WIKI_BASE_URL}/rest/api/content/search"
     params = f"?cql={requests.utils.quote(cql)}&limit=20&expand=history"
 
