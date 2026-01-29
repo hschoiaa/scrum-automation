@@ -1,0 +1,42 @@
+name: Daily Scrum Report
+
+on:
+  schedule:
+    # 매일 오전 9시 (한국시간 오전 9시 = UTC 0시)
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 수동 실행 가능
+
+jobs:
+  create-scrum-report:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        pip install requests
+
+    - name: Generate Scrum Report
+      env:
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        WIKI_PARENT_PAGE_ID: ${{ secrets.WIKI_PARENT_PAGE_ID }}
+      run: |
+        python scrum_report.py
+
+    - name: Notify completion
+      if: success()
+      run: |
+        echo "✅ Scrum report created successfully!"
+
+    - name: Notify failure
+      if: failure()
+      run: |
+        echo "❌ Failed to create scrum report"
