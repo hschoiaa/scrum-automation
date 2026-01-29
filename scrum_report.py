@@ -165,8 +165,12 @@ def get_or_create_month_page():
     url = f"{WIKI_BASE_URL}/rest/api/content"
     response = api_request("POST", url, page_data)
 
-    print(f"  ✅ 월별 페이지 생성 완료: ID={response['id']}")
-    return response['id']
+    if 'id' in response:
+        print(f"  ✅ 월별 페이지 생성 완료: ID={response['id']}")
+        return response['id']
+    else:
+        print(f"  ❌ 월별 페이지 생성 실패: {response}")
+        exit(1)
 
 def create_daily_page(month_page_id, html_content):
     """일자별 페이지 생성"""
