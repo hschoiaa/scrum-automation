@@ -109,27 +109,70 @@ def analyze_tickets(issues):
     return in_progress, ktlo_items
 
 def generate_html(in_progress, ktlo_items):
-    """HTML 콘텐츠 생성"""
-    html = '<h2>📋 과제 (진행중)</h2><ul>'
+    """HTML 콘텐츠 생성 - 표 형식"""
+    # 다음 주 금요일 계산
+    from datetime import timedelta
+    today = datetime.now()
+    days_until_friday = (4 - today.weekday()) % 7
+    if days_until_friday == 0:
+        days_until_friday = 7
+    next_friday = today + timedelta(days=days_until_friday)
+    target_date = next_friday.strftime('~%m/%d')
 
+    # HTML 시작
+    html = '<h1>어제 온콜 이슈</h1><p><br /></p><hr />'
+    html += '<table data-layout="center"><colgroup>'
+    html += '<col style="width: 80px;" />'
+    html += '<col style="width: 400px;" />'
+    html += '<col style="width: 300px;" />'
+    html += '<col style="width: 250px;" />'
+    html += '<col style="width: 300px;" />'
+    html += '</colgroup><tbody>'
+
+    # 헤더
+    html += '<tr>'
+    html += '<th><p><strong>이름</strong></p></th>'
+    html += '<th><p><strong>과제</strong></p></th>'
+    html += f'<th><p><strong>{target_date} 목표</strong></p></th>'
+    html += '<th><p><strong>이슈</strong></p></th>'
+    html += '<th><p><strong>KTLO</strong></p></th>'
+    html += '</tr>'
+
+    # 최형수 행
+    html += '<tr>'
+    html += '<td><p>최형수</p></td>'
+
+    # 과제 (진행중)
+    html += '<td><ul>'
     if not in_progress:
-        html += '<li><em>진행중인 과제가 없습니다.</em></li>'
+        html += '<li><p><em>진행중인 과제가 없습니다.</em></p></li>'
     else:
         for item in in_progress:
-            html += f'<li><strong><a href="https://jira.team.musinsa.com/browse/{item["key"]}">{item["key"]}</a></strong>: {item["summary"]}'
+            html += f'<li><p><a href="https://jira.team.musinsa.com/browse/{item["key"]}">{item["key"]}</a>: {item["summary"]}</p>'
             if item['comment']:
-                html += f'<ul><li><em>[{item["comment"]["date"]}] {item["comment"]["author"]}: {item["comment"]["text"]}</em></li></ul>'
+                html += f'<ul><li><p><em>[{item["comment"]["date"]}] {item["comment"]["author"]}: {item["comment"]["text"]}</em></p></li></ul>'
             html += '</li>'
+    html += '</ul><p><br /></p></td>'
 
-    html += '</ul><h2>🔧 KTLO (완료된 운영 작업)</h2><ul>'
+    # 목표 (빈칸)
+    html += '<td><p><br /></p></td>'
 
+    # 이슈 (빈칸)
+    html += '<td><p><br /></p></td>'
+
+    # KTLO
+    html += '<td><ul>'
     if not ktlo_items:
-        html += '<li><em>완료된 KTLO가 없습니다.</em></li>'
+        html += '<li><p><em>완료된 KTLO가 없습니다.</em></p></li>'
     else:
         for item in ktlo_items[:15]:
-            html += f'<li><a href="https://jira.team.musinsa.com/browse/{item["key"]}">{item["key"]}</a>: {item["summary"]} <em>(완료: {item["updated"]})</em></li>'
+            html += f'<li><p><a href="https://jira.team.musinsa.com/browse/{item["key"]}">{item["key"]}</a>: {item["summary"]} <em>({item["updated"]})</em></p></li>'
+    html += '</ul></td>'
 
-    html += '</ul>'
+    html += '</tr>'
+    html += '</tbody></table>'
+    html += '<p><br /></p>'
+
     return html
 
 def get_or_create_month_page():
