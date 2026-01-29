@@ -16,11 +16,22 @@ WIKI_PARENT_PAGE_ID = os.environ.get('WIKI_PARENT_PAGE_ID', '291243949')
 JIRA_BASE_URL = "https://musinsa-oneteam.atlassian.net"
 WIKI_BASE_URL = f"{JIRA_BASE_URL}/wiki"
 
-# 날짜 정보
-TODAY = datetime.now().strftime('%Y-%m-%d')
-MONTH = datetime.now().strftime('%Y-%m')
-YEAR = datetime.now().strftime('%Y')
-MONTH_NUM = datetime.now().strftime('%m')
+# 날짜 정보 (TARGET_DATE 환경 변수가 있으면 사용)
+target_date_str = os.environ.get('TARGET_DATE')
+if target_date_str:
+    try:
+        TARGET_DATE_OBJ = datetime.strptime(target_date_str, '%Y-%m-%d')
+        print(f"📅 지정된 날짜 사용: {target_date_str}")
+    except ValueError:
+        print(f"❌ 잘못된 날짜 형식: {target_date_str} (YYYY-MM-DD 형식 필요)")
+        exit(1)
+else:
+    TARGET_DATE_OBJ = datetime.now()
+
+TODAY = TARGET_DATE_OBJ.strftime('%Y-%m-%d')
+MONTH = TARGET_DATE_OBJ.strftime('%Y-%m')
+YEAR = TARGET_DATE_OBJ.strftime('%Y')
+MONTH_NUM = TARGET_DATE_OBJ.strftime('%m')
 
 print(f"📅 날짜: {TODAY}")
 print(f"📁 월: {MONTH}")
@@ -44,7 +55,7 @@ def get_jira_tickets():
     print("🔍 JIRA 티켓 조회 중...")
 
     # 요일별 수집 기간 결정
-    weekday = datetime.now().weekday()  # 0=월, 1=화, 2=수, 3=목
+    weekday = TARGET_DATE_OBJ.weekday()  # 0=월, 1=화, 2=수, 3=목
     if weekday == 0:  # 월요일
         days = 7
         print("  → 월요일: 1주일치 데이터 수집")
@@ -71,7 +82,7 @@ def get_confluence_pages():
     print("📄 Confluence 페이지 조회 중...")
 
     # 요일별 수집 기간 결정 (JIRA와 동일)
-    weekday = datetime.now().weekday()  # 0=월, 1=화, 2=수, 3=목
+    weekday = TARGET_DATE_OBJ.weekday()  # 0=월, 1=화, 2=수, 3=목
     if weekday == 0:  # 월요일
         days = 7
     elif weekday == 1:  # 화요일
@@ -183,11 +194,11 @@ def generate_html(in_progress, ktlo_items):
     """HTML 콘텐츠 생성 - 표 형식"""
     # 다음 주 금요일 계산
     from datetime import timedelta
-    today = datetime.now()
-    days_until_friday = (4 - today.weekday()) % 7
+    base_date = TARGET_DATE_OBJ
+    days_until_friday = (4 - base_date.weekday()) % 7
     if days_until_friday == 0:
         days_until_friday = 7
-    next_friday = today + timedelta(days=days_until_friday)
+    next_friday = base_date + timedelta(days=days_until_friday)
     target_date = next_friday.strftime('~%m/%d')
 
     # HTML 시작
@@ -306,7 +317,7 @@ def get_or_create_month_page():
 def create_daily_page(month_page_id, html_content):
     """일자별 페이지 생성"""
     # 월요일이면 제목에 "주간회의" 추가
-    weekday = datetime.now().weekday()  # 0=월
+    weekday = TARGET_DATE_OBJ.weekday()  # 0=월
     page_title = f"{TODAY} 주간회의" if weekday == 0 else TODAY
 
     print(f"📄 일자별 페이지 생성 중: {page_title}")
