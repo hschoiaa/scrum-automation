@@ -305,11 +305,15 @@ def get_or_create_month_page():
 
 def create_daily_page(month_page_id, html_content):
     """일자별 페이지 생성"""
-    print(f"📄 일자별 페이지 생성 중: {TODAY}")
+    # 월요일이면 제목에 "주간회의" 추가
+    weekday = datetime.now().weekday()  # 0=월
+    page_title = f"{TODAY} 주간회의" if weekday == 0 else TODAY
+
+    print(f"📄 일자별 페이지 생성 중: {page_title}")
 
     page_data = {
         "type": "page",
-        "title": TODAY,
+        "title": page_title,
         "space": {"key": "~hschoi82"},
         "ancestors": [{"id": month_page_id}],
         "body": {
