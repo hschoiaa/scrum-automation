@@ -189,24 +189,33 @@ def generate_html(in_progress, ktlo_items):
     html += '<tr>'
     html += '<td><p>최형수</p></td>'
 
-    # 과제 (진행중)
+    # 과제 (진행중) - JIRA와 Confluence 구분
     html += '<td><ul>'
     if not in_progress:
         html += '<li><p><em>진행중인 과제가 없습니다.</em></p></li>'
     else:
-        for item in in_progress:
-            # URL 결정 (Confluence 페이지면 url 필드 사용, 아니면 JIRA 링크)
-            if 'url' in item:
-                link_url = item['url']
-                link_text = item['summary']
-            else:
+        # JIRA와 Confluence 분리
+        jira_items = [item for item in in_progress if 'url' not in item]
+        wiki_items = [item for item in in_progress if 'url' in item]
+
+        # JIRA 섹션
+        if jira_items:
+            html += '<li><p><strong>JIRA</strong></p><ul>'
+            for item in jira_items:
                 link_url = f"https://jira.team.musinsa.com/browse/{item['key']}"
                 link_text = f"{item['key']}: {item['summary']}"
+                html += f'<li><p><a href="{link_url}">{link_text}</a></p>'
+                if item.get('comment'):
+                    html += f'<ul><li><p><em>[{item["comment"]["date"]}] {item["comment"]["author"]}: {item["comment"]["text"]}</em></p></li></ul>'
+                html += '</li>'
+            html += '</ul></li>'
 
-            html += f'<li><p><a href="{link_url}">{link_text}</a></p>'
-            if item.get('comment'):
-                html += f'<ul><li><p><em>[{item["comment"]["date"]}] {item["comment"]["author"]}: {item["comment"]["text"]}</em></p></li></ul>'
-            html += '</li>'
+        # Confluence 섹션
+        if wiki_items:
+            html += '<li><p><strong>Confluence</strong></p><ul>'
+            for item in wiki_items:
+                html += f'<li><p><a href="{item["url"]}">{item["summary"]}</a></p></li>'
+            html += '</ul></li>'
     html += '</ul><p><br /></p></td>'
 
     # 목표 (빈칸)
