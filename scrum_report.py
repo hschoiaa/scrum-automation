@@ -52,13 +52,60 @@ def get_jira_tickets():
     print(f"  ✅ {len(response.get('issues', []))}개 티켓 조회됨")
     return response.get('issues', [])
 
-def analyze_tickets(issues):
-    """티켓 분석 및 분류"""
+def get_confluence_pages():
+    """Confluence 페이지 조회"""
+    print("📄 Confluence 페이지 조회 중...")
+
+    # 최근 7일간 생성/수정한 페이지 조회
+    cql = "contributor=currentUser() AND lastModified >= now('-7d') ORDER BY lastModified DESC"
+    url = f"{WIKI_BASE_URL}/rest/api/content/search"
+    params = f"?cql={requests.utils.quote(cql)}&limit=20&expand=history"
+
+    response = api_request("GET", url + params)
+
+    print(f"  ✅ {len(response.get('results', []))}개 페이지 조회됨")
+    return response.get('results', [])
+
+def analyze_tickets(issues, pages=[]):
+    """티켓 및 Confluence 페이지 분석 및 분류"""
     print("📊 티켓 분석 중...")
 
     in_progress = []
     ktlo_items = []
 
+    # Confluence 페이지 처리
+    for page in pages:
+        page_id = page['id']
+        title = page['title']
+
+        # 자동 생성된 스크럼 보고서 페이지는 제외
+        if title.startswith('202') and len(title) == 10:  # YYYY-MM-DD 형식
+            continue
+
+        # 업데이트 날짜 추출 (안전하게 처리)
+        try:
+            if 'history' in page and 'lastUpdated' in page['history']:
+                updated = page['history']['lastUpdated']['when'][:10]
+            elif 'lastModified' in page:
+                updated = page['lastModified'][:10]
+            else:
+                updated = TODAY
+        except:
+            updated = TODAY
+
+        page_url = f"{WIKI_BASE_URL}{page['_links']['webui']}"
+
+        item = {
+            'key': f'WIKI-{page_id}',
+            'summary': f'📄 {title}',
+            'status': 'Wiki',
+            'updated': updated,
+            'url': page_url,
+            'comment': None
+        }
+        in_progress.append(item)
+
+    # JIRA 티켓 처리
     for issue in issues:
         key = issue['key']
         summary = issue['fields']['summary']
@@ -148,8 +195,16 @@ def generate_html(in_progress, ktlo_items):
         html += '<li><p><em>진행중인 과제가 없습니다.</em></p></li>'
     else:
         for item in in_progress:
-            html += f'<li><p><a href="https://jira.team.musinsa.com/browse/{item["key"]}">{item["key"]}</a>: {item["summary"]}</p>'
-            if item['comment']:
+            # URL 결정 (Confluence 페이지면 url 필드 사용, 아니면 JIRA 링크)
+            if 'url' in item:
+                link_url = item['url']
+                link_text = item['summary']
+            else:
+                link_url = f"https://jira.team.musinsa.com/browse/{item['key']}"
+                link_text = f"{item['key']}: {item['summary']}"
+
+            html += f'<li><p><a href="{link_url}">{link_text}</a></p>'
+            if item.get('comment'):
                 html += f'<ul><li><p><em>[{item["comment"]["date"]}] {item["comment"]["author"]}: {item["comment"]["text"]}</em></p></li></ul>'
             html += '</li>'
     html += '</ul><p><br /></p></td>'
@@ -265,16 +320,19 @@ def main():
     # 1. JIRA 티켓 조회
     issues = get_jira_tickets()
 
-    # 2. 티켓 분석
-    in_progress, ktlo_items = analyze_tickets(issues)
+    # 2. Confluence 페이지 조회
+    pages = get_confluence_pages()
 
-    # 3. HTML 생성
+    # 3. 티켓 및 페이지 분석
+    in_progress, ktlo_items = analyze_tickets(issues, pages)
+
+    # 4. HTML 생성
     html_content = generate_html(in_progress, ktlo_items)
 
-    # 4. 월별 페이지 확인/생성
+    # 5. 월별 페이지 확인/생성
     month_page_id = get_or_create_month_page()
 
-    # 5. 일자별 페이지 생성
+    # 6. 일자별 페이지 생성
     page_url = create_daily_page(month_page_id, html_content)
 
     print()
